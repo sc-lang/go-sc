@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+///// Supplementary Types /////
+// These types are not nodes, but are used by nodes and other types in this package.
+
 // Pos represents a source position in the original input text.
 type Pos struct {
 	// Line is the line in the input text that this position occurs at.
@@ -82,6 +85,8 @@ const (
 	nodeEnd
 )
 
+///// Interfaces /////
+
 // A Node is an element in the AST.
 //
 // The interface contains an unexported method so that only
@@ -101,22 +106,33 @@ type Node interface {
 	writeTo(sb *strings.Builder)
 }
 
+// KeyNode is a Node that can act as a dictionary key.
+type KeyNode interface {
+	Node
+	// KeyString returns the string value of the key.
+	// This is a convenient way to access the key value by avoiding
+	// a type assertion when the underlying node type does not matter.
+	KeyString() string
+}
+
+// ValueNode is a node that is an SC value.
+type ValueNode interface {
+	Node
+	valueNode()
+}
+
+// StringContentNode is a node that can appear inside an InterpolatedStringNode.
+type StringContentNode interface {
+	Node
+	stringContentNode()
+}
+
+///// Nodes /////
+
 // NullNode holds the special identifier 'null' representing the null value.
 type NullNode struct {
 	Pos          Pos
 	CommentGroup CommentGroup
-}
-
-func (n *NullNode) Type() NodeType {
-	return NodeNull
-}
-
-func (n *NullNode) Position() Pos {
-	return n.Pos
-}
-
-func (n *NullNode) Comments() *CommentGroup {
-	return &n.CommentGroup
 }
 
 func (n *NullNode) String() string {
@@ -132,18 +148,6 @@ type BoolNode struct {
 	Pos          Pos
 	CommentGroup CommentGroup
 	True         bool // The boolean value.
-}
-
-func (n *BoolNode) Type() NodeType {
-	return NodeBool
-}
-
-func (n *BoolNode) Position() Pos {
-	return n.Pos
-}
-
-func (n *BoolNode) Comments() *CommentGroup {
-	return &n.CommentGroup
 }
 
 func (n *BoolNode) String() string {
@@ -227,18 +231,6 @@ func newNumber(pos Pos, raw string) (*NumberNode, error) {
 	return n, nil
 }
 
-func (n *NumberNode) Type() NodeType {
-	return NodeNumber
-}
-
-func (n *NumberNode) Position() Pos {
-	return n.Pos
-}
-
-func (n *NumberNode) Comments() *CommentGroup {
-	return &n.CommentGroup
-}
-
 func (n *NumberNode) String() string {
 	return n.Raw
 }
@@ -254,18 +246,6 @@ type StringNode struct {
 	Value        string // The string value, after quotes have been removed.
 }
 
-func (n *StringNode) Type() NodeType {
-	return NodeString
-}
-
-func (n *StringNode) Position() Pos {
-	return n.Pos
-}
-
-func (n *StringNode) Comments() *CommentGroup {
-	return &n.CommentGroup
-}
-
 func (n *StringNode) String() string {
 	return `"` + n.Value + `"`
 }
@@ -274,30 +254,13 @@ func (n *StringNode) writeTo(sb *strings.Builder) {
 	sb.WriteString(n.String())
 }
 
-// Key implements the KeyNode interface by returning the string value.
-func (n *StringNode) Key() string {
-	return n.Value
-}
-
 // InterpolatedStringNode is a double quoted string that may have
 // variables interpolated into it. It contains a list of component nodes
 // which are either StringNodes or VariableNodes.
 type InterpolatedStringNode struct {
 	Pos          Pos
 	CommentGroup CommentGroup
-	Components   []Node // Each component is either a StringNode or VariableNode.
-}
-
-func (n *InterpolatedStringNode) Type() NodeType {
-	return NodeInterpolatedString
-}
-
-func (n *InterpolatedStringNode) Position() Pos {
-	return n.Pos
-}
-
-func (n *InterpolatedStringNode) Comments() *CommentGroup {
-	return &n.CommentGroup
+	Components   []StringContentNode // Each component is either a StringNode or VariableNode.
 }
 
 func (n *InterpolatedStringNode) String() string {
@@ -309,12 +272,13 @@ func (n *InterpolatedStringNode) String() string {
 func (n *InterpolatedStringNode) writeTo(sb *strings.Builder) {
 	sb.WriteByte('"')
 	for _, c := range n.Components {
-		if c.Type() == NodeVariable {
-			c.writeTo(sb)
-		} else if c.Type() == NodeString {
+		switch c.Type() {
+		case NodeString:
 			sb.WriteString(c.(*StringNode).Value)
-		} else {
-			panic(fmt.Errorf("invalid node type %T in InterpolatedStringNode", c))
+		case NodeVariable:
+			c.writeTo(sb)
+		default:
+			panic(fmt.Errorf("impossible: invalid node type %T in InterpolatedStringNode", c))
 		}
 	}
 	sb.WriteByte('"')
@@ -327,18 +291,6 @@ type RawStringNode struct {
 	Value        string // The string value, after quotes have been removed.
 }
 
-func (n *RawStringNode) Type() NodeType {
-	return NodeRawString
-}
-
-func (n *RawStringNode) Position() Pos {
-	return n.Pos
-}
-
-func (n *RawStringNode) Comments() *CommentGroup {
-	return &n.CommentGroup
-}
-
 func (n *RawStringNode) String() string {
 	return "`" + n.Value + "`"
 }
@@ -347,28 +299,11 @@ func (n *RawStringNode) writeTo(sb *strings.Builder) {
 	sb.WriteString(n.String())
 }
 
-// Key implements the KeyNode interface by returning the string value.
-func (n *RawStringNode) Key() string {
-	return n.Value
-}
-
 // IdentifierNode holds an identifier.
 type IdentifierNode struct {
 	Pos          Pos
 	CommentGroup CommentGroup
 	Name         string // The identifier name.
-}
-
-func (n *IdentifierNode) Type() NodeType {
-	return NodeIdentifier
-}
-
-func (n *IdentifierNode) Position() Pos {
-	return n.Pos
-}
-
-func (n *IdentifierNode) Comments() *CommentGroup {
-	return &n.CommentGroup
 }
 
 func (n *IdentifierNode) String() string {
@@ -379,28 +314,11 @@ func (n *IdentifierNode) writeTo(sb *strings.Builder) {
 	sb.WriteString(n.String())
 }
 
-// Key implements the KeyNode interface by returning the identifier value.
-func (n *IdentifierNode) Key() string {
-	return n.Name
-}
-
 // VariableNode holds a variable.
 type VariableNode struct {
 	Pos          Pos
 	CommentGroup CommentGroup
 	Identifier   *IdentifierNode // The variable name.
-}
-
-func (n *VariableNode) Type() NodeType {
-	return NodeVariable
-}
-
-func (n *VariableNode) Position() Pos {
-	return n.Pos
-}
-
-func (n *VariableNode) Comments() *CommentGroup {
-	return &n.CommentGroup
 }
 
 func (n *VariableNode) String() string {
@@ -419,19 +337,7 @@ func (n *VariableNode) writeTo(sb *strings.Builder) {
 type ListNode struct {
 	Pos          Pos
 	CommentGroup CommentGroup
-	Elements     []Node // The elements in the order they were scanned.
-}
-
-func (n *ListNode) Type() NodeType {
-	return NodeList
-}
-
-func (n *ListNode) Position() Pos {
-	return n.Pos
-}
-
-func (n *ListNode) Comments() *CommentGroup {
-	return &n.CommentGroup
+	Elements     []ValueNode // The elements in the order they were scanned.
 }
 
 func (n *ListNode) String() string {
@@ -451,31 +357,13 @@ func (n *ListNode) writeTo(sb *strings.Builder) {
 	sb.WriteByte(']')
 }
 
-// KeyNode is a special type of Node that can act as a dictionary key.
-type KeyNode interface {
-	Node
-	Key() string
-}
-
 // MemberNode holds a member of a dictionary.
 // It contains the key and the value.
 type MemberNode struct {
 	Pos          Pos
 	CommentGroup CommentGroup
-	Key          KeyNode // The key of the member.
-	Value        Node    // The value of the member.
-}
-
-func (n *MemberNode) Type() NodeType {
-	return NodeMember
-}
-
-func (n *MemberNode) Position() Pos {
-	return n.Pos
-}
-
-func (n *MemberNode) Comments() *CommentGroup {
-	return &n.CommentGroup
+	Key          KeyNode   // The key of the member.
+	Value        ValueNode // The value of the member.
 }
 
 func (n *MemberNode) String() string {
@@ -495,18 +383,6 @@ type DictionaryNode struct {
 	Pos          Pos
 	CommentGroup CommentGroup
 	Members      []*MemberNode // The members in the order they were scanned.
-}
-
-func (n *DictionaryNode) Type() NodeType {
-	return NodeDictionary
-}
-
-func (n *DictionaryNode) Position() Pos {
-	return n.Pos
-}
-
-func (n *DictionaryNode) Comments() *CommentGroup {
-	return &n.CommentGroup
 }
 
 func (n *DictionaryNode) String() string {
@@ -533,20 +409,72 @@ type endNode struct {
 	CommentGroup CommentGroup
 }
 
-func (n *endNode) Type() NodeType {
-	return nodeEnd
-}
-
-func (n *endNode) Position() Pos {
-	return n.Pos
-}
-
-func (n *endNode) Comments() *CommentGroup {
-	return &n.CommentGroup
-}
-
-func (n *endNode) String() string {
-	return ""
-}
-
+func (n *endNode) String() string              { return "" }
 func (n *endNode) writeTo(sb *strings.Builder) {}
+
+// Node implementations
+
+func (n *NullNode) Type() NodeType               { return NodeNull }
+func (n *BoolNode) Type() NodeType               { return NodeBool }
+func (n *NumberNode) Type() NodeType             { return NodeNumber }
+func (n *StringNode) Type() NodeType             { return NodeString }
+func (n *InterpolatedStringNode) Type() NodeType { return NodeInterpolatedString }
+func (n *RawStringNode) Type() NodeType          { return NodeRawString }
+func (n *IdentifierNode) Type() NodeType         { return NodeIdentifier }
+func (n *VariableNode) Type() NodeType           { return NodeVariable }
+func (n *ListNode) Type() NodeType               { return NodeList }
+func (n *MemberNode) Type() NodeType             { return NodeMember }
+func (n *DictionaryNode) Type() NodeType         { return NodeDictionary }
+func (n *endNode) Type() NodeType                { return nodeEnd }
+
+func (n *NullNode) Position() Pos               { return n.Pos }
+func (n *BoolNode) Position() Pos               { return n.Pos }
+func (n *NumberNode) Position() Pos             { return n.Pos }
+func (n *StringNode) Position() Pos             { return n.Pos }
+func (n *InterpolatedStringNode) Position() Pos { return n.Pos }
+func (n *RawStringNode) Position() Pos          { return n.Pos }
+func (n *IdentifierNode) Position() Pos         { return n.Pos }
+func (n *VariableNode) Position() Pos           { return n.Pos }
+func (n *ListNode) Position() Pos               { return n.Pos }
+func (n *MemberNode) Position() Pos             { return n.Pos }
+func (n *DictionaryNode) Position() Pos         { return n.Pos }
+func (n *endNode) Position() Pos                { return n.Pos }
+
+func (n *NullNode) Comments() *CommentGroup               { return &n.CommentGroup }
+func (n *BoolNode) Comments() *CommentGroup               { return &n.CommentGroup }
+func (n *NumberNode) Comments() *CommentGroup             { return &n.CommentGroup }
+func (n *StringNode) Comments() *CommentGroup             { return &n.CommentGroup }
+func (n *InterpolatedStringNode) Comments() *CommentGroup { return &n.CommentGroup }
+func (n *RawStringNode) Comments() *CommentGroup          { return &n.CommentGroup }
+func (n *IdentifierNode) Comments() *CommentGroup         { return &n.CommentGroup }
+func (n *VariableNode) Comments() *CommentGroup           { return &n.CommentGroup }
+func (n *ListNode) Comments() *CommentGroup               { return &n.CommentGroup }
+func (n *MemberNode) Comments() *CommentGroup             { return &n.CommentGroup }
+func (n *DictionaryNode) Comments() *CommentGroup         { return &n.CommentGroup }
+func (n *endNode) Comments() *CommentGroup                { return &n.CommentGroup }
+
+// KeyNode implementations
+
+func (n *StringNode) KeyString() string     { return n.Value }
+func (n *RawStringNode) KeyString() string  { return n.Value }
+func (n *IdentifierNode) KeyString() string { return n.Name }
+
+// ValueNode implementations
+// valueNode() ensures that only value nodes can be assigned to a ValueNode.
+
+func (*NullNode) valueNode()               {}
+func (*BoolNode) valueNode()               {}
+func (*NumberNode) valueNode()             {}
+func (*InterpolatedStringNode) valueNode() {}
+func (*RawStringNode) valueNode()          {}
+func (*VariableNode) valueNode()           {}
+func (*ListNode) valueNode()               {}
+func (*DictionaryNode) valueNode()         {}
+func (*endNode) valueNode()                {}
+
+// StringContentNode implementations
+// stringContentNode() ensures that only nodes that can appear inside
+// an interpolated string can be assigned to a StringContentNode.
+
+func (*StringNode) stringContentNode()   {}
+func (*VariableNode) stringContentNode() {}

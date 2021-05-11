@@ -47,7 +47,7 @@ func (d *decoder) saveError(err error) {
 	d.errors = append(d.errors, err)
 }
 
-func (d *decoder) unmarshal(n scparse.Node, v interface{}) error {
+func (d *decoder) unmarshal(n scparse.ValueNode, v interface{}) error {
 	rv := reflect.ValueOf(v)
 	// v must be a pointer and not nil
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
@@ -66,7 +66,7 @@ func (d *decoder) unmarshal(n scparse.Node, v interface{}) error {
 	return nil
 }
 
-func (d *decoder) decodeValue(n scparse.Node, v reflect.Value) error {
+func (d *decoder) decodeValue(n scparse.ValueNode, v reflect.Value) error {
 	// If v can't be set just ignore it
 	if !v.IsValid() {
 		return nil
@@ -90,12 +90,12 @@ func (d *decoder) decodeValue(n scparse.Node, v reflect.Value) error {
 	case *scparse.ListNode:
 		return d.decodeList(n, v)
 	default:
-		// This should never happen, otherwise the parser would have caught it
-		return fmt.Errorf("sc: invalid node type used as value: %v", n.Type())
+		panic(fmt.Errorf("impossible: invalid node type used as value: %T", n))
 	}
 }
 
 var nodeType = reflect.TypeOf((*scparse.Node)(nil)).Elem()
+var valueNodeType = reflect.TypeOf((*scparse.ValueNode)(nil)).Elem()
 
 func (d *decoder) decodeNull(n *scparse.NullNode, v reflect.Value) error {
 	// Check for unmarshaler.
@@ -110,18 +110,20 @@ func (d *decoder) decodeNull(n *scparse.NullNode, v reflect.Value) error {
 
 	v = pv
 	switch v.Kind() {
-	case reflect.Interface, reflect.Ptr, reflect.Map, reflect.Slice:
-		if v.Kind() == reflect.Interface && v.Type() == nodeType {
+	case reflect.Interface:
+		if t := v.Type(); t == nodeType || t == valueNodeType {
 			v.Set(reflect.ValueOf(n))
 			break
 		}
+		fallthrough // Handle nil assignment below
+	case reflect.Ptr, reflect.Map, reflect.Slice:
 		v.Set(reflect.Zero(v.Type()))
-		// otherwise ignore null, the default value will be used
 	case reflect.Struct:
 		if v.Type() == reflect.TypeOf((*scparse.NullNode)(nil)).Elem() {
 			v.Set(reflect.ValueOf(n).Elem())
 			break
 		}
+		// otherwise ignore null, the zero value will be used
 	}
 	return nil
 }
@@ -142,7 +144,7 @@ func (d *decoder) decodeBool(n *scparse.BoolNode, v reflect.Value) error {
 	case reflect.Bool:
 		v.SetBool(n.True)
 	case reflect.Interface:
-		if v.Type() == nodeType {
+		if t := v.Type(); t == nodeType || t == valueNodeType {
 			v.Set(reflect.ValueOf(n))
 			break
 		}
@@ -177,7 +179,7 @@ func (d *decoder) decodeNumber(n *scparse.NumberNode, v reflect.Value) error {
 	v = pv
 	switch v.Kind() {
 	case reflect.Interface:
-		if v.Type() == nodeType {
+		if t := v.Type(); t == nodeType || t == valueNodeType {
 			v.Set(reflect.ValueOf(n))
 			break
 		}
@@ -232,6 +234,12 @@ func (d *decoder) decodeInterpolatedString(n *scparse.InterpolatedStringNode, v 
 		return u.UnmarshalSC(n, d.vars)
 	}
 
+	// Check for Node or ValueNode first so we don't unnecessarily expand variables
+	if t := v.Type(); t == nodeType || t == valueNodeType {
+		v.Set(reflect.ValueOf(n))
+		return nil
+	}
+
 	// Hold off on checking TextUnmarshaler because we need to expand variables first
 	var sb strings.Builder
 	for _, c := range n.Components {
@@ -250,8 +258,7 @@ func (d *decoder) decodeInterpolatedString(n *scparse.InterpolatedStringNode, v 
 			}
 			sb.WriteString(fmt.Sprint(val))
 		default:
-			// This should never happen, otherwise the parser would have caught it
-			panic(fmt.Errorf("sc: invalid node type in InterpolatedString: %v", c.Type()))
+			panic(fmt.Errorf("impossible: invalid node type in InterpolatedString: %T", c))
 		}
 	}
 	if ut != nil {
@@ -277,10 +284,6 @@ func (d *decoder) decodeInterpolatedString(n *scparse.InterpolatedStringNode, v 
 	case reflect.String:
 		v.SetString(sb.String())
 	case reflect.Interface:
-		if v.Type() == nodeType {
-			v.Set(reflect.ValueOf(n))
-			break
-		}
 		if v.NumMethod() == 0 {
 			v.Set(reflect.ValueOf(sb.String()))
 			break
@@ -327,7 +330,7 @@ func (d *decoder) decodeRawString(n *scparse.RawStringNode, v reflect.Value) err
 	case reflect.String:
 		v.SetString(n.Value)
 	case reflect.Interface:
-		if v.Type() == nodeType {
+		if t := v.Type(); t == nodeType || t == valueNodeType {
 			v.Set(reflect.ValueOf(n))
 			break
 		}
@@ -360,7 +363,7 @@ func (d *decoder) decodeVariable(n *scparse.VariableNode, v reflect.Value) error
 	}
 
 	t := v.Type()
-	if t == nodeType {
+	if t == nodeType || t == valueNodeType {
 		v.Set(reflect.ValueOf(n))
 		return nil
 	}
@@ -416,7 +419,7 @@ func (d *decoder) decodeDictionary(n *scparse.DictionaryNode, v reflect.Value) e
 		v.Set(reflect.ValueOf(di))
 		return nil
 	}
-	if t == nodeType {
+	if t == nodeType || t == valueNodeType {
 		v.Set(reflect.ValueOf(n))
 		return nil
 	}
@@ -454,7 +457,7 @@ func (d *decoder) decodeDictionary(n *scparse.DictionaryNode, v reflect.Value) e
 	origErrorContext := d.errorContext
 
 	for _, mn := range n.Members {
-		key := mn.Key.Key()
+		key := mn.Key.KeyString()
 
 		// Figure out field corresponding to key.
 		var subv reflect.Value
@@ -566,7 +569,7 @@ func (d *decoder) decodeList(n *scparse.ListNode, v reflect.Value) error {
 	case reflect.Array, reflect.Slice:
 		break
 	case reflect.Interface:
-		if v.Type() == nodeType {
+		if t := v.Type(); t == nodeType || t == valueNodeType {
 			v.Set(reflect.ValueOf(n))
 			return nil
 		}
@@ -674,8 +677,7 @@ func (d *decoder) valueInterface(n scparse.Node) interface{} {
 				}
 				sb.WriteString(fmt.Sprint(val))
 			default:
-				// This should never happen, otherwise the parser would have caught it
-				panic(fmt.Errorf("sc: invalid node type in InterpolatedString: %v", c.Type()))
+				panic(fmt.Errorf("impossible: invalid node type in InterpolatedString: %T", c))
 			}
 		}
 		return sb.String()
@@ -693,8 +695,7 @@ func (d *decoder) valueInterface(n scparse.Node) interface{} {
 	case *scparse.ListNode:
 		return d.listInterface(n)
 	default:
-		// This should never happen, otherwise the parser would have caught it
-		panic(fmt.Errorf("sc: invalid node type used as value: %v", n.Type()))
+		panic(fmt.Errorf("impossible: invalid node type used as value: %T", n))
 	}
 }
 
@@ -702,7 +703,7 @@ func (d *decoder) valueInterface(n scparse.Node) interface{} {
 func (d *decoder) dictionaryInterface(n *scparse.DictionaryNode) map[string]interface{} {
 	m := make(map[string]interface{})
 	for _, mn := range n.Members {
-		m[mn.Key.Key()] = d.valueInterface(mn.Value)
+		m[mn.Key.KeyString()] = d.valueInterface(mn.Value)
 	}
 	return m
 }

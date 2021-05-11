@@ -154,14 +154,14 @@ Loop:
 }
 
 // parseValue parses a SC value and returns the appropriate node.
-func (p *parser) parseValue() Node {
+func (p *parser) parseValue() ValueNode {
 	// Parse head comments before the node
 	var headComments []Comment
 	for p.peek().typ == tokenComment {
 		headComments = append(headComments, p.parseComment())
 	}
 
-	var node Node
+	var node ValueNode
 	switch p.peek().typ {
 	case tokenNull:
 		node = p.parseNull()
@@ -271,7 +271,7 @@ Loop:
 // parseString parses a string value that might have variables interpolated in it.
 func (p *parser) parseString() *InterpolatedStringNode {
 	startTok := p.next()
-	var components []Node
+	var components []StringContentNode
 	// To combine and normalize false positives into a single string
 	var sn *StringNode
 	var sb strings.Builder
@@ -401,7 +401,7 @@ func (p *parser) parseDictionary() *DictionaryNode {
 
 func (p *parser) parseList() *ListNode {
 	startTok := p.next()
-	var elements []Node
+	var elements []ValueNode
 	var end Node
 	for {
 		el := p.parseValue()

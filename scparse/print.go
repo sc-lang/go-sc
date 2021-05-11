@@ -79,7 +79,7 @@ func (p *printer) printComments(cmts []Comment) {
 	}
 }
 
-func (p *printer) printValue(n Node) {
+func (p *printer) printValue(n ValueNode) {
 	// Print comments before the node
 	p.printComments(n.Comments().Head)
 
@@ -96,7 +96,7 @@ func (p *printer) printValue(n Node) {
 	case *DictionaryNode:
 		p.printDictionary(n)
 	default:
-		panic(fmt.Errorf("printer: unexpected node type %T", n))
+		panic(fmt.Errorf("impossible: unexpected node type %T", n))
 	}
 
 	// Queue end-of-line comments
@@ -135,7 +135,7 @@ func (p *printer) printInterpolatedString(n *InterpolatedStringNode) {
 		case *VariableNode:
 			p.WriteString(c.String())
 		default:
-			panic(fmt.Errorf("printer: unexpected node type %T in InterpolatedStringNode", n))
+			panic(fmt.Errorf("impossible: unexpected node type %T in InterpolatedStringNode", n))
 		}
 	}
 	p.WriteByte('"')
@@ -190,6 +190,8 @@ func (p *printer) printMember(n *MemberNode) {
 		p.WriteByte('"')
 		p.escapeString(k.Value)
 		p.WriteByte('"')
+	default:
+		panic(fmt.Errorf("impossible: unexpected node type %T in key", n))
 	}
 
 	p.comments = append(p.comments, k.Comments().Inline...)
