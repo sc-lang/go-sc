@@ -105,7 +105,7 @@ var parseTests = []struct {
 					},
 					Value: &InterpolatedStringNode{
 						Pos: Pos{2, 9, 10},
-						Components: []Node{
+						Components: []StringContentNode{
 							&StringNode{
 								Pos:   Pos{2, 10, 11},
 								Value: "service",
@@ -224,7 +224,7 @@ var parseTests = []struct {
 					},
 					Value: &InterpolatedStringNode{
 						Pos: Pos{3, 9, 27},
-						Components: []Node{
+						Components: []StringContentNode{
 							&VariableNode{
 								Pos: Pos{3, 10, 28},
 								Identifier: &IdentifierNode{
@@ -247,7 +247,7 @@ var parseTests = []struct {
 					},
 					Value: &InterpolatedStringNode{
 						Pos: Pos{4, 10, 56},
-						Components: []Node{
+						Components: []StringContentNode{
 							&StringNode{
 								Pos:   Pos{4, 11, 57},
 								Value: "golang:",
@@ -299,7 +299,7 @@ var parseTests = []struct {
 					},
 					Value: &ListNode{
 						Pos: Pos{2, 9, 10},
-						Elements: []Node{
+						Elements: []ValueNode{
 							&NumberNode{
 								Pos:     Pos{2, 10, 11},
 								IsUint:  true,
