@@ -63,7 +63,7 @@ func ExampleUnmarshalNode() {
 }`)
 	type Config struct {
 		Name  string
-		Ports scparse.Node
+		Ports scparse.ValueNode
 	}
 	var config Config
 	err := sc.Unmarshal(scData, &config)

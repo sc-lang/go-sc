@@ -66,13 +66,13 @@ func Unmarshal(data []byte, v interface{}, opts ...UnmarshalOption) error {
 	return d.unmarshal(n, v)
 }
 
-// UnmarshalNode is like Unmarshal but it takes a node instead of SC-encoded data.
+// UnmarshalNode is like Unmarshal but it takes a ValueNode instead of SC-encoded data.
 //
 // If an SC value was previously unmarshaled into a node, UnmarshalNode can be used
 // to unmarshal the node into a Go value.
 //
 // See the documentation for Unmarshal for details on the unmarshal process.
-func UnmarshalNode(n scparse.Node, v interface{}, opts ...UnmarshalOption) error {
+func UnmarshalNode(n scparse.ValueNode, v interface{}, opts ...UnmarshalOption) error {
 	var d decoder
 	for _, opt := range opts {
 		opt(&d)
