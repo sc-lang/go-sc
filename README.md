@@ -1,5 +1,8 @@
 # SC language support for Go
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/sc-lang/go-sc.svg)](https://pkg.go.dev/github.com/sc-lang/go-sc)
+[![sc-lang](https://circleci.com/gh/sc-lang/go-sc.svg?style=shield)](https://circleci.com/gh/sc-lang/go-sc)
+
 The sc package provides support for the Simple Config (SC) language in Go.
 It supports decoding SC data into Go values.
 
@@ -10,6 +13,8 @@ go get github.com/sc-lang/go-sc
 ```
 
 ## Usage
+
+See the [package documentation](https://pkg.go.dev/github.com/sc-lang/go-sc) for full usage details.
 
 This package works in a similar way to the `encoding/json` package in the standard library.
 

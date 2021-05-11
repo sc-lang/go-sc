@@ -94,7 +94,7 @@ func WithVariables(vars Variables) UnmarshalOption {
 	}
 }
 
-// DisallowUnknownFields controls how Unmarshal will behave when the destination
+// WithDisallowUnknownFields controls how Unmarshal will behave when the destination
 // is a struct and the input contains dictionary keys which do not match any
 // non-ignored, exported fields in the destination.
 //
@@ -109,7 +109,7 @@ func WithDisallowUnknownFields(b bool) UnmarshalOption {
 // TODO(@cszatmary): Does it make sense to allow unknown variables by default?
 // Should it be the other way around?
 
-// DisallowUnknownVariables controls how Unmarshal will behave when a variable is being
+// WithDisallowUnknownVariables controls how Unmarshal will behave when a variable is being
 // decoded and no matching variable value is found.
 //
 // By default, unknown variables are silently ignored. If set to true,

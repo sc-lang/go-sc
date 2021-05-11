@@ -87,11 +87,11 @@ type Top struct {
 
 type Top2 struct {
 	Depth0  int
-	*Embed0 `sc:"embed"` // Named embeded struct
+	*Embed0 `sc:"embed"` // Named embedded struct
 }
 
 type Embed0 struct {
-	Depth1a int // Overriden by Embed1
+	Depth1a int // Overridden by Embed1
 	Depth1b int // Used since Embed1 renames it
 	Depth1c int // Used since Embed1 ignores it
 	Depth1d int // Cancelled out by Embed1
