@@ -129,7 +129,7 @@ func WithDisallowUnknownVariables(b bool) UnmarshalOption {
 // a SC description of themselves. This can be used to customize the unmarshaling
 // process for a type.
 type Unmarshaler interface {
-	UnmarshalSC(scparse.Node, Variables) error
+	UnmarshalSC(scparse.ValueNode, Variables) error
 }
 
 // TODO(@cszatmary): Does it make sense to have Decoder?

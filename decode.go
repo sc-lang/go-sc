@@ -648,7 +648,7 @@ func (d *decoder) decodeList(n *scparse.ListNode, v reflect.Value) error {
 // but they avoid the weight of reflection in this common case.
 
 // valueInterface is like decodeValue but returns interface{}
-func (d *decoder) valueInterface(n scparse.Node) interface{} {
+func (d *decoder) valueInterface(n scparse.ValueNode) interface{} {
 	switch n := n.(type) {
 	case *scparse.NullNode:
 		return nil

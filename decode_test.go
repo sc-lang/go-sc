@@ -46,7 +46,7 @@ type pathBuf struct {
 	components []string
 }
 
-func (p *pathBuf) UnmarshalSC(n scparse.Node, vars sc.Variables) error {
+func (p *pathBuf) UnmarshalSC(n scparse.ValueNode, vars sc.Variables) error {
 	var s string
 	switch n := n.(type) {
 	case *scparse.InterpolatedStringNode:
