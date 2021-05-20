@@ -15,6 +15,8 @@ import (
 	"github.com/sc-lang/go-sc/scparse"
 )
 
+///// Unmarshaling & Decoding /////
+
 // Unmarshal parses the SC-encoded data and stores the result in the value pointed to by v.
 // If v is nil or not a pointer, Unmarshal returns InvalidUnmarshalError.
 // The top level SC value must be a dictionary. Therefore, v must point to either a map or
@@ -23,8 +25,8 @@ import (
 // Unmarshal will initialize any nested maps, slices, and pointers it encounters as needed.
 // If a value implements the Unmarshaler interface, Unmarshal calls its UnmarshalSC method
 // with the SC node and any variable values provided to Unmarshal. If the value implements
-// encoding.TextUnmarshaler and the SC value is a string, Unmarshal call value's UnmarshalText
-// method with the unquoted form of the SC string.
+// the encoding.TextUnmarshaler and the SC value is a string, Unmarshal call the value's
+// UnmarshalText method with the unquoted form of the SC string.
 //
 // Struct fields are only unmarshaled if they are exported and are unmarshaled using the
 // field name as the default key. Custom keys may be defined via the "sc" name
@@ -324,4 +326,50 @@ func (vars Variables) Lookup(n *scparse.VariableNode) (interface{}, bool) {
 		return nil, false
 	}
 	return v.Interface(), true
+}
+
+///// Marshaling & Encoding /////
+
+// Marshal encodes v into an SC representation and returns the data.
+// v must be a struct or a map or a pointer to one of these types.
+//
+// If a value implements the Marshaler interface, Marshal calls its
+// MarshalSC method to produce an SC node. If the value implements
+// the encoding.TextMarshaler interface, Marshal calls its MarshalText
+// method and encodes the result as an SC string.
+//
+// Struct fields are only encoded if they are exported and use the field
+// name as the key by default. Struct fields can be customized
+// using the "sc" key in the field's tag. The tag value is the name of the field
+// optionally followed by a comma-separated list of options. The name of the field
+// can be omitted to specify options without overridding the default field name.
+// If the tag value is "-", then the field will be omitted.
+//
+// The "omitempty" option causes the field to be omitted if it is an empty value.
+// Empty values are false, 0, a nil pointer, a nil interface value,
+// and an empty array, slice, map, or string.
+func Marshal(v interface{}) ([]byte, error) {
+	var e encoder
+	n, err := e.marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	return scparse.Format(n), nil
+}
+
+// Marshaler is the interface implemented by types that can marshal
+// themselves into an SC value.
+type Marshaler interface {
+	MarshalSC() (scparse.ValueNode, error)
+}
+
+// MarshalError is returned by Marshal and describes an error that occurred
+// during marshaling.
+type MarshalError struct {
+	Value   reflect.Value // The value that caused the error.
+	Context string        // The details of the error.
+}
+
+func (e *MarshalError) Error() string {
+	return "sc: " + e.Context
 }

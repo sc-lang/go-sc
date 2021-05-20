@@ -96,19 +96,20 @@ func (p *parser) expect(expected tokenType, context string) token {
 
 // recover turns panics into returns from the top level of Parse.
 func (p *parser) recover(errp *error) {
-	e := recover()
-	if e == nil {
+	r := recover()
+	if r == nil {
 		return
 	}
-	// Make sure it's an Error otherwise it is something more serious that we can't handle
-	// (ex: runtime.Error)
-	if _, ok := e.(*Error); !ok {
-		panic(e)
+	// Make sure it's an Error otherwise it is something more serious that we
+	// can't handle (ex: runtime.Error)
+	e, ok := r.(*Error)
+	if !ok {
+		panic(r)
 	}
 	if p.lex != nil {
 		p.lex.drain()
 	}
-	*errp = e.(error)
+	*errp = e
 }
 
 // parse is the top level parser that parses the SC document.

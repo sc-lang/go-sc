@@ -89,3 +89,28 @@ func ExampleUnmarshalNode() {
 	// List
 	// [{Src:8080 Dst:8080} {Src:80 Dst:80}]
 }
+
+func ExampleMarshal() {
+	type Config struct {
+		Name       string `sc:"name"`
+		Memory     int    `sc:"memory"`
+		IsRequired bool   `sc:"required"`
+	}
+	config := Config{
+		Name:       "foo",
+		Memory:     256,
+		IsRequired: true,
+	}
+	b, err := sc.Marshal(config)
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+	}
+	fmt.Printf("%s\n", b)
+
+	// Output:
+	// {
+	//   name: "foo"
+	//   memory: 256
+	//   required: true
+	// }
+}

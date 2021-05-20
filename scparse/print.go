@@ -119,7 +119,7 @@ func (p *printer) printNumber(n *NumberNode) {
 		return
 	}
 	if n.IsFloat {
-		p.printf("%f", n.Float64)
+		p.printf("%g", n.Float64)
 		return
 	}
 	// Empty number, print zero value

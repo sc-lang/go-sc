@@ -12,6 +12,12 @@ import (
 	"github.com/sc-lang/go-sc/scparse"
 )
 
+var (
+	nodeType            = reflect.TypeOf((*scparse.Node)(nil)).Elem()
+	valueNodeType       = reflect.TypeOf((*scparse.ValueNode)(nil)).Elem()
+	textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+)
+
 // A large amount of the reflection code in this file is adapted from
 // encoding/json because reflection is not fun.
 // Copyright 2010 The Go Authors. All rights reserved.
@@ -93,9 +99,6 @@ func (d *decoder) decodeValue(n scparse.ValueNode, v reflect.Value) error {
 		panic(fmt.Errorf("impossible: invalid node type used as value: %T", n))
 	}
 }
-
-var nodeType = reflect.TypeOf((*scparse.Node)(nil)).Elem()
-var valueNodeType = reflect.TypeOf((*scparse.ValueNode)(nil)).Elem()
 
 func (d *decoder) decodeNull(n *scparse.NullNode, v reflect.Value) error {
 	// Check for unmarshaler.
@@ -397,8 +400,6 @@ func (d *decoder) decodeVariable(n *scparse.VariableNode, v reflect.Value) error
 	}
 	return nil
 }
-
-var textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
 
 func (d *decoder) decodeDictionary(n *scparse.DictionaryNode, v reflect.Value) error {
 	// Check for unmarshaler.
