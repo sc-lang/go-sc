@@ -14,7 +14,7 @@ clean: ## Clean all build artifacts
 .PHONY: clean
 
 fmt: ## Format all go files
-	@shed run goimports -- -w .
+	@shed run goimports -w .
 .PHONY: fmt
 
 check-fmt: ## Check if any go files need to be formatted

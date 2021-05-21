@@ -60,7 +60,7 @@ func (e *encoder) encodeValue(v reflect.Value) scparse.ValueNode {
 	if t.Implements(nodeType) {
 		return e.encodeNode(v)
 	}
-	// Check if it is node that isn't a pointer. This is supported for consistency since
+	// Check if it is a node that isn't a pointer. This is supported for consistency since
 	// Unmarshal supports non-pointer nodes as a consequence of how it is implemented.
 	if reflect.PtrTo(t).Implements(nodeType) {
 		if !v.CanAddr() {
@@ -99,7 +99,7 @@ func (e *encoder) encodeValue(v reflect.Value) scparse.ValueNode {
 	default:
 		e.marshalErrorf(v, "unsupported type: %s", t)
 	}
-	// Never hit, go doesn't realize that the default cause panics though
+	// Never hit, go doesn't realize that the default case panics though
 	return nil
 }
 
